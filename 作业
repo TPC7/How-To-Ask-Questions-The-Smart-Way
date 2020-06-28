@@ -1,0 +1,75 @@
+import requests
+from bs4 import BeautifulSoup as bs
+from fake_useragent import UserAgent 
+import lxml.etree
+import pandas as pd
+
+
+def get_bs_info(url):
+    #模拟user_agent
+    # ua = UserAgent()
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36 Edg/83.0.478.54'
+
+    cookie = '__mta=247300027.1593096435925.1593096541201.1593096570174.8; uuid_n_v=v1; uuid=C2AB5290B6F211EA9736CB82F1E069890D690B54255F4EDEBFD6E189FDD1FCEC; mojo-uuid=aa3ce1c8a8f0bed502b612d81a39bc81; _lxsdk_cuid=172ebf2773fc8-00b822708bd351-79657964-1fa400-172ebf2773fc8; _lxsdk=C2AB5290B6F211EA9736CB82F1E069890D690B54255F4EDEBFD6E189FDD1FCEC; _csrf=cae11e118a1b9c10eb3b7eec4e38638d2a780376bd64b6d5e5723c012a320c22; Hm_lvt_703e94591e87be68cc8da0da7cbd0be2=1593096435,1593096540,1593168857; Hm_lpvt_703e94591e87be68cc8da0da7cbd0be2=1593168868; __mta=247300027.1593096435925.1593096570174.1593168868451.9; _lxsdk_s=172f0c06e1c-03-927-dc1%7C%7C1'
+    header = {'user-agent': user_agent, 'cookie': cookie}
+
+    response = requests.get(url, headers=header)
+    response.encoding = 'utf-8'
+    bs_info = bs(response.text, 'html.parser')
+    return bs_info
+
+def get_movie_url(bs_info):
+    movie_urls = []
+    for tags in bs_info.find_all('div',attrs={'class': 'channel-detail movie-item-title'}):
+        for atag in tags.find_all('a',):
+            movie_url= atag.get('href')
+            movie_urls.append('https://maoyan.com' + movie_url)
+    return movie_urls[:10]
+
+def movie_content(url):
+    #模拟user_agent
+    # ua = UserAgent()
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36 Edg/83.0.478.54'
+
+    cookie = '__mta=247300027.1593096435925.1593096541201.1593096570174.8; uuid_n_v=v1; uuid=C2AB5290B6F211EA9736CB82F1E069890D690B54255F4EDEBFD6E189FDD1FCEC; mojo-uuid=aa3ce1c8a8f0bed502b612d81a39bc81; _lxsdk_cuid=172ebf2773fc8-00b822708bd351-79657964-1fa400-172ebf2773fc8; _lxsdk=C2AB5290B6F211EA9736CB82F1E069890D690B54255F4EDEBFD6E189FDD1FCEC; _csrf=cae11e118a1b9c10eb3b7eec4e38638d2a780376bd64b6d5e5723c012a320c22; Hm_lvt_703e94591e87be68cc8da0da7cbd0be2=1593096435,1593096540,1593168857; Hm_lpvt_703e94591e87be68cc8da0da7cbd0be2=1593168868; __mta=247300027.1593096435925.1593096570174.1593168868451.9; _lxsdk_s=172f0c06e1c-03-927-dc1%7C%7C1'
+
+    header = {'user-agent': user_agent, 'cookie': cookie}
+
+    response = requests.get(url, headers=header)
+    response.encoding = 'utf-8'
+
+    # xml化处理
+    selector = lxml.etree.HTML(response.text)
+
+    # 电影名称
+    film_name = selector.xpath('/html/body/div[3]/div/div[2]/div[1]/h1/text()')
+    print(f'电影名称: {film_name}')
+
+    # 上映日期
+    plan_date = selector.xpath('/html/body/div[3]/div/div[2]/div[1]/ul/li[3]/text()')
+    print(f'上映日期: {plan_date}')
+
+    # 类型
+    film_type = []
+    film_type.append(selector.xpath('/html/body/div[3]/div/div[2]/div[1]/ul/li[1]/a[1]/text()'))
+    film_type.append(selector.xpath('/html/body/div[3]/div/div[2]/div[1]/ul/li[1]/a[2]/text()'))
+    film_type.append(selector.xpath('/html/body/div[3]/div/div[2]/div[1]/ul/li[1]/a[3]/text()'))
+
+
+    print(f'电影类型：{film_type}')
+
+    mylist = [film_name, plan_date, film_type]
+
+    movie1 = pd.DataFrame(data = mylist)
+
+    movie1.to_csv('./movie_maoyan.csv', mode='a', encoding='utf-8', index=False, header=False)
+
+
+bs_info = get_bs_info('https://maoyan.com/films?showType=3')
+
+movie_urls = get_movie_url(bs_info)
+
+for movie_url in movie_urls:
+    print(movie_url)
+    movie_content(movie_url)
+
